@@ -12,7 +12,8 @@ bot = telebot.TeleBot('1415720377:AAGyEilgj3u-Yt9yrrejCGVREasvk-Lit_0')
 
 @bot.message_handler(commands=['start'])
 def start(message):
-    game = HangmanGame(message.from_user.id)
+    username = message.from_user.first_name + ' ' + message.from_user.username
+    game = HangmanGame(message.from_user.id, username)
     bot.send_message(message.from_user.id, 'Начинаем игру!')
     game.greetings()
     bot.register_next_step_handler(message, game.game_runner)
@@ -21,33 +22,35 @@ def start(message):
 def any_message(message):
     bot.send_message(message.from_user.id, 'Набери /start для начала игры')
 
-def write_statistic(user_id, result):
+def write_statistic(user_id, result, username):
     user_id = str(user_id)
-    with open('statistic.json') as rf:
+    with open('statistic.json', encoding='utf-8') as rf:
         statistic = json.load(rf)
     if user_id not in statistic:
-        statistic[user_id] = {'win': 0, "lose": 0}
+        statistic[user_id] = {'User': username, 'win': 0, "lose": 0}
     if result == 'win':
         statistic[user_id]["win"] = statistic[user_id]["win"] + 1
     else:
         statistic[user_id]["lose"] = statistic[user_id]["lose"] + 1
-    with open('statistic.json', 'w') as wf:
-        json.dump(statistic, wf, indent=4)
+    with open('statistic.json', 'w', encoding='utf-8') as wf:
+        json.dump(statistic, wf, indent=4, ensure_ascii=False)
 
 def get_statistic(user_id):
     user_id = str(user_id)
-    with open('statistic.json') as rf:
+    with open('statistic.json', encoding='utf-8') as rf:
         statistic = json.load(rf)
         all_games = statistic[user_id]['win'] + statistic[user_id]['lose']
         wins = statistic[user_id]['win']
         loses = statistic[user_id]['lose']
     return f'''Всего игр {all_games}
-Из них побед - {wins}, поражений - {loses}'''
+Из них побед - {wins}, поражений - {loses}
+'''
 
 def select_random_word():
     with open('hangman.txt', encoding='utf-8') as f:
         words_lst = f.readlines()
-    rand_word = words_lst[randint(0, len(words_lst) - 1)].strip()
+    rand_word = words_lst[randint(1, len(words_lst) - 1)].strip()
+    # rand_word = words_lst[0].strip()
     return rand_word
 
 def is_endgame(word):
@@ -58,12 +61,13 @@ def is_endgame(word):
 
 class HangmanGame:
 
-    def __init__(self, user_id, qty = 10):
+    def __init__(self, user_id, username, qty = 10):
         self.wrong_letters = []
         self.secret_word = list(select_random_word().lower())
         self.known_letters = [self.secret_word[0], self.secret_word[-1]]
         self.user_id = user_id
         self.qty = qty
+        self.username = username
 
     def greetings(self):
         self.send_to_bot(greetings(self.qty, self.get_word()))
@@ -111,12 +115,12 @@ class HangmanGame:
             self.send_to_bot(word)
             if not self.is_letter_right(): self.qty -= 1
             if is_endgame(word):
-                write_statistic(self.user_id, 'win')
+                write_statistic(self.user_id, 'win', self.username)
                 self.send_to_bot(get_statistic(self.user_id))
                 self.send_to_bot('Поздравляю! Ты выйграл =)\nЕсли хочешь сыграть ещё раз набери /start')
             elif self.qty == 0:
                 self.send_to_bot(self.get_step_info())
-                write_statistic(self.user_id, 'lose')
+                write_statistic(self.user_id, 'lose', self.username)
                 self.send_to_bot(f'Ты проиграл =(\nЗагаданное слово - {self.secret_word[0].upper() + "".join(self.secret_word[1:])}'
                                  f'\nЕсли хочешь сыграть ещё раз набери /start')
                 self.send_to_bot(get_statistic(self.user_id))
