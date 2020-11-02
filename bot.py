@@ -1,23 +1,48 @@
+# - *- coding: utf- 8 - *-
+
 from hangman_data import get_gallows, greetings
 from random import randint
 import telebot
+import re
+import json
 
 bot = telebot.TeleBot('1415720377:AAGyEilgj3u-Yt9yrrejCGVREasvk-Lit_0')
 
-keyboard = telebot.types.ReplyKeyboardMarkup(resize_keyboard=True)
-keyboard.row('/start')
+
 
 @bot.message_handler(commands=['start'])
 def start(message):
     game = HangmanGame(message.from_user.id)
-    bot.send_message(message.from_user.id, 'Let\'s game begin!')
+    bot.send_message(message.from_user.id, 'Начинаем игру!')
     game.greetings()
     bot.register_next_step_handler(message, game.game_runner)
 
 @bot.message_handler(content_types=['text'])
 def any_message(message):
-    bot.send_message(message.from_user.id, 'Please type /start to start game')
+    bot.send_message(message.from_user.id, 'Набери /start для начала игры')
 
+def write_statistic(user_id, result):
+    user_id = str(user_id)
+    with open('statistic.json') as rf:
+        statistic = json.load(rf)
+    if user_id not in statistic:
+        statistic[user_id] = {'win': 0, "lose": 0}
+    if result == 'win':
+        statistic[user_id]["win"] = statistic[user_id]["win"] + 1
+    else:
+        statistic[user_id]["lose"] = statistic[user_id]["lose"] + 1
+    with open('statistic.json', 'w') as wf:
+        json.dump(statistic, wf, indent=4)
+
+def get_statistic(user_id):
+    user_id = str(user_id)
+    with open('statistic.json') as rf:
+        statistic = json.load(rf)
+        all_games = statistic[user_id]['win'] + statistic[user_id]['lose']
+        wins = statistic[user_id]['win']
+        loses = statistic[user_id]['lose']
+    return f'''Всего игр {all_games}
+Из них побед - {wins}, поражений - {loses}'''
 
 def select_random_word():
     with open('hangman.txt', encoding='utf-8') as f:
@@ -58,12 +83,17 @@ class HangmanGame:
 
     def add_letter_to_known(self, message):
         letter = message.text.lower()
-        if letter not in self.known_letters:
+        if len(letter) > 1:
+            self.send_to_bot('Вводи буквы по одной')
+            return False
+        elif not re.match(r'[а-я]', letter):
+            self.send_to_bot('Только русские буквы, пожалуйста')
+        elif letter in self.known_letters:
+            self.send_to_bot('Ты уже вводил эту букву')
+            return False
+        else:
             self.known_letters.append(letter)
             return True
-        else:
-            self.send_to_bot('You already entered this letter')
-            return False
 
     def is_letter_right(self):
         if self.known_letters[-1] in self.secret_word:
@@ -73,7 +103,7 @@ class HangmanGame:
             return False
 
     def get_step_info(self):
-        return f'''{get_gallows(self.qty + 1)}\n{self.qty} attempts left\nWrong letters: {", ".join(self.wrong_letters)}'''
+        return f'''{get_gallows(self.qty + 1)}\n{self.qty} попыток осталось\nНеправильные буквы: {", ".join(self.wrong_letters)}'''
 
     def game_runner(self, message):
         if self.add_letter_to_known(message):
@@ -81,10 +111,15 @@ class HangmanGame:
             self.send_to_bot(word)
             if not self.is_letter_right(): self.qty -= 1
             if is_endgame(word):
+                write_statistic(self.user_id, 'win')
+                self.send_to_bot(get_statistic(self.user_id))
                 self.send_to_bot('Поздравляю! Ты выйграл =)\nЕсли хочешь сыграть ещё раз набери /start')
             elif self.qty == 0:
+                self.send_to_bot(self.get_step_info())
+                write_statistic(self.user_id, 'lose')
                 self.send_to_bot(f'Ты проиграл =(\nЗагаданное слово - {self.secret_word[0].upper() + "".join(self.secret_word[1:])}'
                                  f'\nЕсли хочешь сыграть ещё раз набери /start')
+                self.send_to_bot(get_statistic(self.user_id))
             else:
                 self.send_to_bot(self.get_step_info())
                 bot.register_next_step_handler(message, self.game_runner)
