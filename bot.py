@@ -17,7 +17,6 @@ STATISTIC = config['DATA']['STATISTIC']
 bot = telebot.TeleBot(TOKEN)
 
 
-
 @bot.message_handler(commands=['start'])
 def start(message):
     username = message.from_user.first_name + ' ' + message.from_user.username
@@ -26,6 +25,7 @@ def start(message):
     game.greetings()
     bot.register_next_step_handler(message, game.game_runner)
 
+
 @bot.message_handler(content_types=['text'])
 def any_message(message):
     bot.send_message(message.from_user.id, 'Набери /start для начала игры')
@@ -33,13 +33,14 @@ def any_message(message):
 
 class HangmanGame:
 
-    def __init__(self, user_id, username, qty = 10):
+    def __init__(self, user_id, username, qty=10):
         self.wrong_letters = []
         self.secret_word = list(self.select_random_word().lower())
         self.known_letters = [self.secret_word[0], self.secret_word[-1]]
         self.user_id = user_id
         self.qty = qty
         self.username = username
+
     @staticmethod
     def write_statistic(user_id, result, username):
         user_id = str(user_id)
@@ -119,13 +120,15 @@ class HangmanGame:
             return False
 
     def get_step_info(self):
-        return f'''{get_gallows(self.qty + 1)}\n{self.qty} попыток осталось\nНеправильные буквы: {", ".join(self.wrong_letters)}'''
+        return f'{get_gallows(self.qty + 1)}\n{self.qty} попыток осталось\nНеправильные буквы: ' \
+               f'{", ".join(self.wrong_letters)}'
 
     def game_runner(self, message):
         if self.add_letter_to_known(message):
             word = self.get_word()
             self.send_to_bot(word)
-            if not self.is_letter_right(): self.qty -= 1
+            if not self.is_letter_right():
+                self.qty -= 1
             if self.is_endgame(word):
                 self.write_statistic(self.user_id, 'win', self.username)
                 self.send_to_bot(self.get_statistic(self.user_id))
@@ -133,8 +136,9 @@ class HangmanGame:
             elif self.qty == 0:
                 self.send_to_bot(self.get_step_info())
                 self.write_statistic(self.user_id, 'lose', self.username)
-                self.send_to_bot(f'Ты проиграл =(\nЗагаданное слово - {self.secret_word[0].upper() + "".join(self.secret_word[1:])}'
-                                 f'\nЕсли хочешь сыграть ещё раз набери /start')
+                self.send_to_bot(
+                    f'Ты проиграл =(\nЗагаданное слово - {self.secret_word[0].upper() + "".join(self.secret_word[1:])}'
+                    f'\nЕсли хочешь сыграть ещё раз набери /start')
                 self.send_to_bot(self.get_statistic(self.user_id))
             else:
                 self.send_to_bot(self.get_step_info())
