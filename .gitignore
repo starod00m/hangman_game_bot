@@ -3,3 +3,5 @@
 /venv/
 /.idea/
 /test.py
+/env.ini
+/data/statistic.json
