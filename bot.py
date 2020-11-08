@@ -13,6 +13,7 @@ config.read('env.ini')
 TOKEN = config['AUTH']['TOKEN']
 DICT = config['DATA']['DICT']
 STATISTIC = config['DATA']['STATISTIC']
+ADMIN_ID = config['AUTH']['ADMIN_ID']
 
 bot = telebot.TeleBot(TOKEN)
 
@@ -32,10 +33,21 @@ def get_stat(message):
     stats = get_statistic(user_id)
     bot.send_message(user_id, stats)
 
-# @bot.message_handler(commands=['full_stat'])
-# def get_full_stat(message):
-#     user_id = message.from_user.id
-#     if user_id ==
+@bot.message_handler(commands=['fullstat'])
+def get_full_stat(message):
+    if message.from_user.id == int(ADMIN_ID):
+        with open(STATISTIC, encoding='utf-8') as rf:
+            statistic = json.load(rf)
+            text = ''
+            for user_id in statistic:
+                name = statistic[user_id]['User']
+                wins = statistic[user_id]['win']
+                loses = statistic[user_id]['lose']
+                text += f'{name}\nПобед - {wins}\nПоражений - {loses}\n===========\n'
+
+        bot.send_message(user_id, text)
+    else:
+        any_message(message)
 
 @bot.message_handler(content_types=['text'])
 def any_message(message):
