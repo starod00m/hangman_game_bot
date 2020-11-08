@@ -45,7 +45,7 @@ def get_full_stat(message):
                 loses = statistic[user_id]['lose']
                 text += f'{name}\nПобед - {wins}\nПоражений - {loses}\n===========\n'
 
-        bot.send_message(user_id, text)
+        bot.send_message(message.from_user.id, text)
     else:
         any_message(message)
 
