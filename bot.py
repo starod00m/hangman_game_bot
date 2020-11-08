@@ -26,19 +26,36 @@ def start(message):
     bot.register_next_step_handler(message, game.game_runner)
 
 
+@bot.message_handler(commands=['stat'])
+def get_stat(message):
+    user_id = message.from_user.id
+    stats = get_statistic(user_id)
+    bot.send_message(user_id, stats)
+
+
 @bot.message_handler(content_types=['text'])
 def any_message(message):
     bot.send_message(message.from_user.id, 'Набери /start для начала игры')
 
 
+def get_statistic(user_id):
+    user_id = str(user_id)
+    with open(STATISTIC, encoding='utf-8') as rf:
+        statistic = json.load(rf)
+        all_games = statistic[user_id]['win'] + statistic[user_id]['lose']
+        wins = statistic[user_id]['win']
+        loses = statistic[user_id]['lose']
+    return f'Всего игр {all_games} \nИз них побед - {wins}, поражений - {loses}'
+
+
 class HangmanGame:
 
-    def __init__(self, user_id, username, qty=10):
+    def __init__(self, user_id, username, attempts=10):
         self.wrong_letters = []
         self.secret_word = list(self.select_random_word().lower())
         self.known_letters = [self.secret_word[0], self.secret_word[-1]]
         self.user_id = user_id
-        self.qty = qty
+        self.qty = attempts
         self.username = username
 
     @staticmethod
@@ -54,18 +71,6 @@ class HangmanGame:
             statistic[user_id]["lose"] = statistic[user_id]["lose"] + 1
         with open(STATISTIC, 'w', encoding='utf-8') as wf:
             json.dump(statistic, wf, indent=4, ensure_ascii=False)
-
-    @staticmethod
-    def get_statistic(user_id):
-        user_id = str(user_id)
-        with open(STATISTIC, encoding='utf-8') as rf:
-            statistic = json.load(rf)
-            all_games = statistic[user_id]['win'] + statistic[user_id]['lose']
-            wins = statistic[user_id]['win']
-            loses = statistic[user_id]['lose']
-        return f'''Всего игр {all_games}
-    Из них побед - {wins}, поражений - {loses}
-    '''
 
     @staticmethod
     def select_random_word():
@@ -131,7 +136,7 @@ class HangmanGame:
                 self.qty -= 1
             if self.is_endgame(word):
                 self.write_statistic(self.user_id, 'win', self.username)
-                self.send_to_bot(self.get_statistic(self.user_id))
+                self.send_to_bot(get_statistic(self.user_id))
                 self.send_to_bot('Поздравляю! Ты выйграл =)\nЕсли хочешь сыграть ещё раз набери /start')
             elif self.qty == 0:
                 self.send_to_bot(self.get_step_info())
@@ -139,7 +144,7 @@ class HangmanGame:
                 self.send_to_bot(
                     f'Ты проиграл =(\nЗагаданное слово - {self.secret_word[0].upper() + "".join(self.secret_word[1:])}'
                     f'\nЕсли хочешь сыграть ещё раз набери /start')
-                self.send_to_bot(self.get_statistic(self.user_id))
+                self.send_to_bot(get_statistic(self.user_id))
             else:
                 self.send_to_bot(self.get_step_info())
                 bot.register_next_step_handler(message, self.game_runner)
