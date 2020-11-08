@@ -26,12 +26,16 @@ def start(message):
     bot.register_next_step_handler(message, game.game_runner)
 
 
-@bot.message_handler(commands=['stat'])
+@bot.message_handler(commands=['score'])
 def get_stat(message):
     user_id = message.from_user.id
     stats = get_statistic(user_id)
     bot.send_message(user_id, stats)
 
+# @bot.message_handler(commands=['full_stat'])
+# def get_full_stat(message):
+#     user_id = message.from_user.id
+#     if user_id ==
 
 @bot.message_handler(content_types=['text'])
 def any_message(message):
