@@ -4,4 +4,4 @@
 /.idea/
 /test.py
 /env.ini
-/data/statistic.json
+data/statistic.json
